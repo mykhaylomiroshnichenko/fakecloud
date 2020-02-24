@@ -24,7 +24,7 @@ public class Machine {
     @Column(name = "status")
     private MachineStatus status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 

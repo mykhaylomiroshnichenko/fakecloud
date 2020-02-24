@@ -1,7 +1,10 @@
 package com.fakecloud.service;
 
 import com.fakecloud.model.Machine;
+import com.fakecloud.model.SearchMachineFilter;
 import com.fakecloud.model.User;
+
+import java.util.List;
 
 public interface MachineService {
 
@@ -18,4 +21,6 @@ public interface MachineService {
     void create(String uid, User user);
 
     void destroy(Machine machine);
+
+    List<Machine> search(SearchMachineFilter filter);
 }

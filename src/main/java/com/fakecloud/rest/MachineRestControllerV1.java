@@ -1,11 +1,14 @@
 package com.fakecloud.rest;
 
 import com.fakecloud.dto.bridge.MachineToMachineDtoBridge;
+import com.fakecloud.dto.bridge.SearchMachineFilterDtoToSearchMachineFilterBridge;
 import com.fakecloud.dto.model.MachineDto;
+import com.fakecloud.dto.model.SearchMachineFilterDto;
 import com.fakecloud.exception.BadRequestException;
 import com.fakecloud.exception.PreconditionFailedException;
 import com.fakecloud.model.Machine;
 import com.fakecloud.model.MachineStatus;
+import com.fakecloud.model.SearchMachineFilter;
 import com.fakecloud.model.User;
 import com.fakecloud.service.MachineService;
 import com.fakecloud.service.UserService;
@@ -18,6 +21,7 @@ import org.springframework.web.context.request.WebRequest;
 
 import javax.annotation.PreDestroy;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -136,6 +140,15 @@ public class MachineRestControllerV1 {
         executorService.submit(() -> machineService.destroy(machine));
 
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping("search")
+    public List<Machine> search(SearchMachineFilterDto filterDto) {
+        try {
+            return machineService.search(SearchMachineFilterDtoToSearchMachineFilterBridge.build(filterDto));
+        } catch (Exception e) {
+            throw new BadRequestException("Error filter params");
+        }
     }
 
     private void checkVersionAndProcessing(WebRequest webRequest, Machine machine) {

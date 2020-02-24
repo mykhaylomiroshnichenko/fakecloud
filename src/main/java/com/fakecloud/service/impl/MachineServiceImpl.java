@@ -2,6 +2,7 @@ package com.fakecloud.service.impl;
 
 import com.fakecloud.model.Machine;
 import com.fakecloud.model.MachineStatus;
+import com.fakecloud.model.SearchMachineFilter;
 import com.fakecloud.model.User;
 import com.fakecloud.repository.MachineRepository;
 import com.fakecloud.service.MachineService;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 @Service
@@ -116,6 +118,11 @@ public class MachineServiceImpl implements MachineService {
     public void setProcessing(Machine machine) {
         machine.setProcessed(true);
         machineRepository.save(machine);
+    }
+
+    @Override
+    public List<Machine> search(SearchMachineFilter filter) {
+        return machineRepository.search(filter);
     }
 
     private int randomTimeInterval(int min, int max) {
