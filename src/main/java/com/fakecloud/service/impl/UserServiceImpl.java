@@ -35,7 +35,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User register(User user) {
+    public User register(User user) throws BadRequestException {
         validateRegisteredUser(user);
 
         Role roleUser = roleRepository.findByName("ROLE_USER");
@@ -86,7 +86,7 @@ public class UserServiceImpl implements UserService {
         log.info("IN delete - user with id: {} successfully deleted");
     }
 
-    private void validateRegisteredUser(User user) {
+    private void validateRegisteredUser(User user) throws BadRequestException {
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
             throw new BadRequestException("Error: password is required");
         }

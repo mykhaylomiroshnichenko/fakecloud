@@ -34,9 +34,6 @@ public class Machine {
     @Column(name = "active")
     private boolean active;
 
-    @Column(name = "processed")
-    private boolean processed;
-
     @Override
     public String toString() {
         return "Machine{" +
@@ -44,7 +41,6 @@ public class Machine {
                 ", status=" + status +
                 ", createdAt=" + createdAt +
                 ", active=" + active +
-                ", processed=" + processed +
                 '}';
     }
 }

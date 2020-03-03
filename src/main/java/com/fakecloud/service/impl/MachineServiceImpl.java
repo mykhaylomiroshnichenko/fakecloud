@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Service
 @Slf4j
@@ -21,12 +23,14 @@ public class MachineServiceImpl implements MachineService {
 
     private MachineRepository machineRepository;
 
+    private ConcurrentMap<String, String> map = new ConcurrentHashMap<>();
+
     public MachineServiceImpl(MachineRepository machineRepository) {
         this.machineRepository = machineRepository;
     }
 
     @Override
-    public Machine findByUid(String uid) {
+    public synchronized Machine findByUid(String uid) {
         Machine machine = machineRepository.findByUidAndActive(uid, true);
 
         if (machine == null) {
@@ -42,15 +46,17 @@ public class MachineServiceImpl implements MachineService {
     @Async
     public void start(Machine machine) {
         try {
+            map.put(machine.getUid(), "start");
             Thread.sleep(randomTimeInterval(10000, 15000));
             machine.setStatus(MachineStatus.RUNNING);
-            machine.setProcessed(false);
 
             machineRepository.save(machine);
 
             log.info("IN start - machine: {} successfully started", machine);
         } catch (Exception e) {
             log.error(e.getMessage());
+        } finally {
+            map.remove(machine.getUid());
         }
     }
 
@@ -58,15 +64,17 @@ public class MachineServiceImpl implements MachineService {
     @Async
     public void stop(Machine machine) {
         try {
+            map.put(machine.getUid(), "stop");
             Thread.sleep(randomTimeInterval(5000, 10000));
             machine.setStatus(MachineStatus.STOPPED);
-            machine.setProcessed(false);
 
             machineRepository.save(machine);
 
             log.info("IN stop - machine: {} successfully stopped", machine);
         } catch (Exception e) {
             log.error(e.getMessage());
+        } finally {
+            map.remove(machine.getUid());
         }
     }
 
@@ -81,6 +89,7 @@ public class MachineServiceImpl implements MachineService {
     @Async
     public void create(String uid, User user) {
         try {
+            map.put(uid, "create");
             Thread.sleep(randomTimeInterval(5000, 10000));
             Machine machine = new Machine();
             machine.setUid(uid);
@@ -88,13 +97,14 @@ public class MachineServiceImpl implements MachineService {
             machine.setStatus(MachineStatus.STOPPED);
             machine.setCreatedAt(new Date());
             machine.setActive(true);
-            machine.setProcessed(false);
 
             machineRepository.save(machine);
 
             log.info("IN create - machine: {} successfully created", machine);
         } catch (Exception e) {
             log.error(e.getMessage());
+        } finally {
+            map.remove(uid);
         }
     }
 
@@ -102,22 +112,23 @@ public class MachineServiceImpl implements MachineService {
     @Async
     public void destroy(Machine machine) {
         try {
+            map.put(machine.getUid(), "destroy");
             Thread.sleep(randomTimeInterval(5000, 10000));
             machine.setActive(false);
-            machine.setProcessed(false);
 
             machineRepository.save(machine);
 
             log.info("IN destroy - machine: {} successfully destroyed", machine);
         } catch (Exception e) {
             log.error(e.getMessage());
+        } finally {
+            map.remove(machine.getUid());
         }
     }
 
     @Override
-    public void setProcessing(Machine machine) {
-        machine.setProcessed(true);
-        machineRepository.save(machine);
+    public boolean isProcessing(String uid) {
+        return map.get(uid) != null;
     }
 
     @Override

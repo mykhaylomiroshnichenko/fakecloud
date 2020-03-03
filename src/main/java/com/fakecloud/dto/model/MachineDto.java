@@ -13,5 +13,4 @@ public class MachineDto {
     private UserDto createdBy;
     private Date createdAt;
     private boolean active;
-    private boolean processed;
 }

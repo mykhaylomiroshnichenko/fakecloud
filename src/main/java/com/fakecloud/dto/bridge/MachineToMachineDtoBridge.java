@@ -11,7 +11,6 @@ public class MachineToMachineDtoBridge {
         machineDto.setCreatedBy(UserToUserDtoBridge.build(machine.getCreatedBy()));
         machineDto.setCreatedAt(machine.getCreatedAt());
         machineDto.setActive(machine.isActive());
-        machineDto.setProcessed(machine.isProcessed());
 
         return machineDto;
     }

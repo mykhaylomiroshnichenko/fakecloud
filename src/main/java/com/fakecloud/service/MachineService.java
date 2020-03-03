@@ -10,7 +10,7 @@ public interface MachineService {
 
     Machine findByUid(String uid);
 
-    void setProcessing(Machine machine);
+    boolean isProcessing(String uid);
 
     void start(Machine machine);
 

@@ -5,6 +5,7 @@ import com.fakecloud.dto.bridge.UserToUserDtoBridge;
 import com.fakecloud.dto.model.UserDto;
 import com.fakecloud.dto.request.AuthenticationRequestDto;
 import com.fakecloud.dto.request.RegistrationRequestDto;
+import com.fakecloud.exception.BadRequestException;
 import com.fakecloud.model.User;
 import com.fakecloud.security.jwt.JwtTokenProvider;
 import com.fakecloud.service.UserService;
@@ -62,7 +63,7 @@ public class AuthenticationRestControllerV1 {
     }
 
     @PostMapping("register")
-    public ResponseEntity<?> register(@RequestBody RegistrationRequestDto requestDto) {
+    public ResponseEntity<?> register(@RequestBody RegistrationRequestDto requestDto) throws BadRequestException {
         String username = requestDto.getUsername();
         User user = userService.register(RegistrationRequestDtoToUser.build(requestDto));
 

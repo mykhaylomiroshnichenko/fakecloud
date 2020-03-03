@@ -8,7 +8,6 @@ import com.fakecloud.exception.BadRequestException;
 import com.fakecloud.exception.PreconditionFailedException;
 import com.fakecloud.model.Machine;
 import com.fakecloud.model.MachineStatus;
-import com.fakecloud.model.SearchMachineFilter;
 import com.fakecloud.model.User;
 import com.fakecloud.service.MachineService;
 import com.fakecloud.service.UserService;
@@ -17,22 +16,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.WebRequest;
 
 import javax.annotation.PreDestroy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import static org.springframework.util.StringUtils.isEmpty;
+import java.util.concurrent.*;
 
 @RestController
 @RequestMapping(value = "/api/v1/machine/")
 public class MachineRestControllerV1 {
-    private ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private MachineService machineService;
 
@@ -46,23 +41,23 @@ public class MachineRestControllerV1 {
 
     @PreDestroy
     public void shutdown() {
-        executorService.shutdown();
+        executor.shutdown();
     }
 
     @GetMapping("create")
     public ResponseEntity<?> create(Authentication authentication) {
         String uid = UUID.randomUUID().toString();
         User user = userService.findByUsername(authentication.getName());
-        executorService.submit(() -> machineService.create(uid, user));
+        executor.submit(() -> machineService.create(uid, user));
 
-        Map<Object, Object> response = new HashMap<>();
+        Map<String, String> response = new HashMap<>();
         response.put("uid", uid);
 
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("{uid}/get")
-    public ResponseEntity<MachineDto> get(@PathVariable(name = "uid") String uid){
+    public ResponseEntity<MachineDto> get(@PathVariable(name = "uid") String uid) throws BadRequestException{
         Machine machine = machineService.findByUid(uid);
         if (machine == null) {
             throw new BadRequestException("Error machine with uid:" + uid + " has not found");
@@ -75,7 +70,8 @@ public class MachineRestControllerV1 {
     }
 
     @GetMapping("{uid}/start")
-    public ResponseEntity<?> start(WebRequest webRequest, @PathVariable(name = "uid") String uid){
+    public ResponseEntity<?> start(@PathVariable(name = "uid") String uid) throws Exception {
+        checkProcessing(uid);
         Machine machine = machineService.findByUid(uid);
         if (machine == null) {
             throw new BadRequestException("Error machine with uid:" + uid + " has not found");
@@ -83,16 +79,15 @@ public class MachineRestControllerV1 {
         if (!machine.getStatus().equals(MachineStatus.STOPPED)) {
             throw new BadRequestException("Error machine with uid:" + uid + " already started");
         }
-        checkVersionAndProcessing(webRequest, machine);
-        machineService.setProcessing(machine);
 
-        executorService.submit(() -> machineService.start(machine));
+        executor.submit(() -> machineService.start(machine));
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @GetMapping("{uid}/stop")
-    public ResponseEntity<?> stop(WebRequest webRequest, @PathVariable(name = "uid") String uid){
+    public ResponseEntity<?> stop(@PathVariable(name = "uid") String uid) throws Exception {
+        checkProcessing(uid);
         Machine machine = machineService.findByUid(uid);
         if (machine == null) {
             throw new BadRequestException("Error machine with uid:" + uid + " has not found");
@@ -100,16 +95,15 @@ public class MachineRestControllerV1 {
         if (!machine.getStatus().equals(MachineStatus.RUNNING)) {
             throw new BadRequestException("Error machine with uid:" + uid + " already stopped");
         }
-        checkVersionAndProcessing(webRequest, machine);
-        machineService.setProcessing(machine);
 
-        executorService.submit(() -> machineService.stop(machine));
+        executor.submit(() -> machineService.stop(machine));
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @GetMapping("{uid}/restart")
-    public ResponseEntity<?> restart(WebRequest webRequest, @PathVariable(name = "uid") String uid){
+    public ResponseEntity<?> restart(@PathVariable(name = "uid") String uid) throws Exception {
+        checkProcessing(uid);
         Machine machine = machineService.findByUid(uid);
         if (machine == null) {
             throw new BadRequestException("Error machine with uid:" + uid + " has not found");
@@ -117,16 +111,15 @@ public class MachineRestControllerV1 {
         if (!machine.getStatus().equals(MachineStatus.RUNNING)) {
             throw new BadRequestException("Error machine with uid:" + uid + " already stopped");
         }
-        checkVersionAndProcessing(webRequest, machine);
-        machineService.setProcessing(machine);
 
-        executorService.submit(() -> machineService.restart(machine));
+        executor.submit(() -> machineService.restart(machine));
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @GetMapping("{uid}/destroy")
-    public ResponseEntity<?> destroy(WebRequest webRequest, @PathVariable(name = "uid") String uid){
+    public ResponseEntity<?> destroy(@PathVariable(name = "uid") String uid) throws Exception {
+        checkProcessing(uid);
         Machine machine = machineService.findByUid(uid);
         if (machine == null) {
             throw new BadRequestException("Error machine with uid:" + uid + " has not found");
@@ -134,16 +127,14 @@ public class MachineRestControllerV1 {
         if (!machine.getStatus().equals(MachineStatus.STOPPED)) {
             throw new BadRequestException("Error machine with uid:" + uid + " is Running");
         }
-        checkVersionAndProcessing(webRequest, machine);
-        machineService.setProcessing(machine);
 
-        executorService.submit(() -> machineService.destroy(machine));
+        executor.submit(() -> machineService.destroy(machine));
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @GetMapping("search")
-    public List<Machine> search(SearchMachineFilterDto filterDto) {
+    public List<Machine> search(SearchMachineFilterDto filterDto) throws BadRequestException {
         try {
             return machineService.search(SearchMachineFilterDtoToSearchMachineFilterBridge.build(filterDto));
         } catch (Exception e) {
@@ -151,15 +142,8 @@ public class MachineRestControllerV1 {
         }
     }
 
-    private void checkVersionAndProcessing(WebRequest webRequest, Machine machine) {
-        String ifMatchValue = webRequest.getHeader("If-Match");
-        if (isEmpty(ifMatchValue)) {
-            throw new BadRequestException("Header If-Match is required");
-        }
-        if (!ifMatchValue.equals("\"" + machine.getVersion() + "\"")) {
-            throw new PreconditionFailedException("Incorrect version of machine");
-        }
-        if (machine.isProcessed()) {
+    private void checkProcessing(String uid) throws PreconditionFailedException {
+        if (machineService.isProcessing(uid)) {
             throw new PreconditionFailedException("Machine is processing");
         }
     }
