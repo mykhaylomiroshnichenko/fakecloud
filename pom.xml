@@ -14,7 +14,7 @@
         <jsonwebtoken.version>0.9.1</jsonwebtoken.version>
         <lombok.version>1.18.8</lombok.version>
         <h2database.version>1.4.199</h2database.version>
-        <liquibase.version>3.8.5</liquibase.version>
+        <liquibase.version>4.8.0</liquibase.version>
     </properties>
 
     <dependencies>
